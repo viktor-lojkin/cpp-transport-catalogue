@@ -1,10 +1,16 @@
-#include "input_reader.h"
-#include "stat_reader.h"
-
-using namespace trans_cat;
+#include "json_reader.h"
+#include "request_handler.h"
 
 int main() {
-    TransportCatalogue catalogue;
-    SetTransportCatalogue(std::cin, catalogue);
-    ProcessRequests(std::cin, catalogue, std::cout);
+    trans_cat::TransportCatalogue catalogue;
+    JsonReader json_doc(std::cin);
+
+    json_doc.SetCatalogue(catalogue);
+
+    const auto& stat_requests = json_doc.GetStatRequests();
+    const auto& render_settings = json_doc.GetRenderSettings().AsMap();
+    const auto& renderer = json_doc.SetRenderSettings(render_settings);
+
+    RequestHandler rh(catalogue, renderer);
+    rh.ProcessRequests(stat_requests);
 }
