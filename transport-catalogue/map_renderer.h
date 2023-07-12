@@ -64,7 +64,6 @@ public:
         }
     }
 
-    // Проецирует широту и долготу в координаты внутри SVG-изображения
     svg::Point operator()(geo::Coordinates coords) const {
         return {
             (coords.lng - min_lon_) * zoom_coeff_ + padding_,
@@ -77,6 +76,7 @@ private:
     double min_lon_ = 0;
     double max_lat_ = 0;
     double zoom_coeff_ = 0;
+
 };
 
 struct RenderSettings {

@@ -10,12 +10,8 @@ Builder::Builder() {
 Builder::DictKeyContext Builder::Key(std::string key) {
     auto* top_node = nodes_stack_.back();
 
-    if (top_node->IsDict() && !key_) {
-        key_ = std::move(key);
-    }
-    else {
-        throw std::logic_error("Wrong map key: " + key);
-    }
+    if (top_node->IsDict() && !key_) key_ = std::move(key);
+    else throw std::logic_error("Wrong map key: " + key);
 
     return *this;
 }
@@ -39,9 +35,7 @@ Builder& Builder::Value(Node::Value value) {
     else if (root_.IsNull()) {
         root_.GetValue() = std::move(value);
     }
-    else {
-        throw std::logic_error("Value() called in unknow container");
-    }
+    else throw std::logic_error("Value() called in unknow container");
 
     return *this;
 }
@@ -64,9 +58,7 @@ Builder::DictItemContext Builder::StartDict() {
     else if (top_node->IsNull()) {
         top_node->GetValue() = Dict();
     }
-    else {
-        throw std::logic_error("Wrong prev node");
-    }
+    else throw std::logic_error("Wrong prev node");
 
     return *this;
 }
@@ -74,10 +66,7 @@ Builder::DictItemContext Builder::StartDict() {
 Builder& Builder::EndDict() {
     auto* top_node = nodes_stack_.back();
 
-    if (!top_node->IsDict()) {
-        throw std::logic_error("Prev node is not a Dict");
-    }
-
+    if (!top_node->IsDict()) throw std::logic_error("Prev node is not a Dict");
     nodes_stack_.pop_back();
 
     return *this;
@@ -101,9 +90,7 @@ Builder::ArrayItemContext Builder::StartArray() {
     else if (top_node->IsNull()) {
         top_node->GetValue() = Array();
     }
-    else {
-        throw std::logic_error("Wrong prev node");
-    }
+    else throw std::logic_error("Wrong prev node");
 
     return *this;
 }
@@ -111,18 +98,14 @@ Builder::ArrayItemContext Builder::StartArray() {
 Builder& Builder::EndArray() {
     auto* top_node = nodes_stack_.back();
 
-    if (!top_node->IsArray()) {
-        throw std::logic_error("Prev node is not an Array");
-    }
+    if (!top_node->IsArray()) throw std::logic_error("Prev node is not an Array");
     nodes_stack_.pop_back();
 
     return *this;
 }
 
 Node Builder::Build() {
-    if (root_.IsNull() || nodes_stack_.size() > 1) {
-        throw std::logic_error("Wrong Build()");
-    }
+    if (root_.IsNull() || nodes_stack_.size() > 1) throw std::logic_error("Wrong Build()");
     return root_;
 }
 
@@ -138,7 +121,8 @@ Node Builder::GetNode(Node::Value value) {
 }
 
 Builder::DictItemContext::DictItemContext(Builder& builder)
-    : builder_(builder) {}
+    : builder_(builder)
+{}
 
 Builder::DictKeyContext Builder::DictItemContext::Key(std::string key) {
     return builder_.Key(key);
@@ -149,7 +133,8 @@ Builder& Builder::DictItemContext::EndDict() {
 }
 
 Builder::ArrayItemContext::ArrayItemContext(Builder& builder)
-    : builder_(builder) {}
+    : builder_(builder)
+{}
 
 Builder::ArrayItemContext Builder::ArrayItemContext::Value(Node::Value value) {
     return ArrayItemContext(builder_.Value(value));
@@ -168,7 +153,8 @@ Builder& Builder::ArrayItemContext::EndArray() {
 }
 
 Builder::DictKeyContext::DictKeyContext(Builder& builder)
-    : builder_(builder) {}
+    : builder_(builder)
+{}
 
 Builder::DictItemContext Builder::DictKeyContext::Value(Node::Value value) {
     return DictItemContext(builder_.Value(value));

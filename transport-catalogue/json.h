@@ -1,31 +1,26 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <map>
-#include <variant>
-
 #include <iostream>
-
+#include <map>
+#include <string>
+#include <variant>
+#include <vector>
 
 namespace json {
 
 class Node;
-
 using Dict = std::map<std::string, Node>;
 using Array = std::vector<Node>;
 
-class JsonParsingError : public std::runtime_error {
+class ParsingError : public std::runtime_error {
 public:
     using runtime_error::runtime_error;
 };
 
 class Node {
-private:
-    using Value = std::variant<std::nullptr_t, std::string, int, double, bool, Array, Dict>;
-    Value value_;
-
 public:
+    using Value = std::variant<std::nullptr_t, std::string, int, double, bool, Array, Dict>;
+    
     Node() = default;
     Node(std::nullptr_t);
     Node(std::string value);
@@ -33,41 +28,56 @@ public:
     Node(double value);
     Node(bool value);
     Node(Array array);
-    Node(Dict map);
+    Node(Dict map);   
 
     bool IsInt() const;
+    bool IsDouble() const;
     bool IsDoubleOrInt() const;
     bool IsBool() const;
-    bool IsString() const;
     bool IsNull() const;
     bool IsArray() const;
-    bool IsMap() const;
-
+    bool IsString() const;
+    bool IsDict() const;
+    
     int AsInt() const;
-    bool AsBool() const;
     double AsDouble() const;
-    const std::string& AsString() const;
+    bool AsBool() const;
     const Array& AsArray() const;
-    const Dict& AsMap() const;
-
-    const Value& GetValue() const;
-
+    const std::string& AsString() const;
+    const Dict& AsDict() const;
+    
     bool operator==(const Node& rhs) const;
     bool operator!=(const Node& rhs) const;
+
+    const Value& GetValue() const;
+    Value& GetValue();
+    
+private:
+    Value value_;
+    
 };
 
 class Document {
 public:
-    explicit Document(Node root);
+    explicit Document(Node root)
+        : root_(std::move(root)) {
+    }
 
-    const Node& GetRoot() const;
-
-    bool operator==(const Document& rhs) const;
-    bool operator!=(const Document& rhs) const;
+    const Node& GetRoot() const {
+        return root_;
+    }
 
 private:
     Node root_;
 };
+
+inline bool operator==(const Document& lhs, const Document& rhs) {
+    return lhs.GetRoot() == rhs.GetRoot();
+}
+
+inline bool operator!=(const Document& lhs, const Document& rhs) {
+    return !(lhs == rhs);
+}
 
 Document Load(std::istream& input);
 
@@ -87,19 +97,20 @@ struct PrintContext {
     }
 };
 
-template <typename Value>
-void PrintValue(const Value& value, const PrintContext& context) {
-    context.out << value;
+template <typename Value> 
+void PrintValue(const Value& value, const PrintContext& ctx) {
+    ctx.out << value;
 }
-
-void PrintValue(std::nullptr_t, const PrintContext& context);
-void PrintValue(std::string value, const PrintContext& ccontexttx);
-void PrintValue(bool value, const PrintContext& context);
-void PrintValue(Array array, const PrintContext& context);
-void PrintValue(Dict dict, const PrintContext& context);
-
-void PrintNode(const Node& node, const PrintContext& context);
-
+    
+void PrintValue(const std::string& value, const PrintContext& ctx);
+void PrintValue(const std::nullptr_t&, const PrintContext& ctx);
+void PrintValue(const bool& value, const PrintContext& ctx);
+void PrintValue(const Array& nodes, const PrintContext& ctx);
+void PrintValue(const Dict& nodes, const PrintContext& ctx);
+    
+void PrintNode(const Node& value, const PrintContext& ctx);    
+void PrintString(const std::string& value, std::ostream& out);
+    
 void Print(const Document& doc, std::ostream& output);
 
 }  // namespace json

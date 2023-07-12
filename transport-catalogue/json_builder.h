@@ -7,11 +7,6 @@
 namespace json {
 
 class Builder {
-private:
-    Node root_{ nullptr };
-    std::vector<Node*> nodes_stack_;
-    std::optional<std::string> key_{ std::nullopt };
-
 public:
     class DictItemContext;
     class DictKeyContext;
@@ -26,23 +21,25 @@ public:
     Builder& EndArray();
     Node Build();
     Node GetNode(Node::Value value);
+
+private:
+    Node root_{ nullptr };
+    std::vector<Node*> nodes_stack_;
+    std::optional<std::string> key_{ std::nullopt };
 };
 
 class Builder::DictItemContext {
-private:
-    Builder& builder_;
-
 public:
     DictItemContext(Builder& builder);
 
     DictKeyContext Key(std::string key);
     Builder& EndDict();
+
+private:
+    Builder& builder_;
 };
 
 class Builder::ArrayItemContext {
-private:
-    Builder& builder_;
-
 public:
     ArrayItemContext(Builder& builder);
 
@@ -50,18 +47,21 @@ public:
     DictItemContext StartDict();
     Builder& EndArray();
     ArrayItemContext StartArray();
+
+private:
+    Builder& builder_;
 };
 
 class Builder::DictKeyContext {
-private:
-    Builder& builder_;
-
 public:
     DictKeyContext(Builder& builder);
 
     DictItemContext Value(Node::Value value);
     ArrayItemContext StartArray();
     DictItemContext StartDict();
+
+private:
+    Builder& builder_;
 };
 
 } // namespace json

@@ -1,65 +1,89 @@
 #include "request_handler.h"
+#include "json_builder.h"
 
 void RequestHandler::ProcessRequests(const json::Node& stat_requests) const {
     json::Array result;
     for (auto& request : stat_requests.AsArray()) {
-        const auto& request_map = request.AsMap();
+        const auto& request_map = request.AsDict();
         const auto& type = request_map.at("type").AsString();
-        if (type == "Stop") result.push_back(PrintStop(request_map).AsMap());
-        if (type == "Bus") result.push_back(PrintRoute(request_map).AsMap());
-        if (type == "Map") result.push_back(PrintMap(request_map).AsMap());
+        if (type == "Stop") result.push_back(PrintStop(request_map).AsDict());
+        if (type == "Bus") result.push_back(PrintRoute(request_map).AsDict());
+        if (type == "Map") result.push_back(PrintMap(request_map).AsDict());
     }
 
     json::Print(json::Document{ result }, std::cout);
 }
 
 const json::Node RequestHandler::PrintRoute(const json::Dict& request_map) const {
-    json::Dict result;
+    json::Node result;
+    const int id = request_map.at("id").AsInt();
     const std::string& bus_name = request_map.at("name").AsString();
-    result["request_id"] = request_map.at("id").AsInt();
+
     if (!catalogue_.FindBus(bus_name)) {
-        result["error_message"] = json::Node{ static_cast<std::string>("not found") };
+        result = json::Builder{}.StartDict()
+            .Key("request_id").Value(id)
+            .Key("error_message").Value("not found")
+            .EndDict()
+            .Build();
     }
     else {
         auto bus_stat = GetBusStat(bus_name);
-        result["curvature"] = bus_stat->curvature;
-        result["route_length"] = bus_stat->route_length;
-        result["stop_count"] = static_cast<int>(bus_stat->stops_count);
-        result["unique_stop_count"] = static_cast<int>(bus_stat->unique_stops_count);
+
+        result = json::Builder{}.StartDict()
+            .Key("request_id").Value(id)
+            .Key("curvature").Value(bus_stat->curvature)
+            .Key("route_length").Value(bus_stat->route_length)
+            .Key("stop_count").Value(static_cast<int>(bus_stat->stops_count))
+            .Key("unique_stop_count").Value(static_cast<int>(bus_stat->unique_stops_count))
+            .EndDict()
+            .Build();
     }
 
-    return json::Node{ result };
+    return result;
 }
 
 const json::Node RequestHandler::PrintStop(const json::Dict& request_map) const {
-    json::Dict result;
+    json::Node result;
+    const int id = request_map.at("id").AsInt();
     const std::string& stop_name = request_map.at("name").AsString();
-    result["request_id"] = request_map.at("id").AsInt();
+
     if (!catalogue_.FindStop(stop_name)) {
-        result["error_message"] = json::Node{ static_cast<std::string>("not found") };
+        result = json::Builder{}.StartDict()
+            .Key("request_id").Value(id)
+            .Key("error_message").Value("not found")
+            .EndDict()
+            .Build();
     }
     else {
         json::Array buses;
         for (auto& bus : GetBusesByStop(stop_name)) {
             buses.push_back(bus);
         }
-        result["buses"] = buses;
+        result = json::Builder{}.StartDict()
+            .Key("request_id").Value(id)
+            .Key("buses").Value(buses)
+            .EndDict()
+            .Build();
     }
 
-    return json::Node{ result };
+    return result;
 }
 
 const json::Node RequestHandler::PrintMap(const json::Dict& request_map) const {
-    json::Dict result;
+    json::Node result;
     std::ostringstream strm;
     svg::Document map = RenderMap();
 
+    const int id = request_map.at("id").AsInt();
     map.Render(strm);
 
-    result["map"] = strm.str();
-    result["request_id"] = request_map.at("id").AsInt();
+    result = json::Builder{}.StartDict()
+        .Key("request_id").Value(id)
+        .Key("map").Value(strm.str())
+        .EndDict()
+        .Build();
 
-    return json::Node{ result };
+    return result;
 }
 
 std::optional<trans_cat::BusStat> RequestHandler::GetBusStat(const std::string_view bus_number) const {
