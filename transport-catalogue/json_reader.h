@@ -3,32 +3,37 @@
 #include "json.h"
 #include "transport_catalogue.h"
 #include "map_renderer.h"
+#include "request_handler.h"
 
 #include <iostream>
 
-class JsonReadingError : public std::logic_error {
-public:
-    using logic_error::logic_error;
-};
-
 class JsonReader {
-private:
-    json::Document input_;
-    json::Node node_ = nullptr;
-
-    std::tuple<std::string_view, geo::Coordinates, std::map<std::string_view, int>> SetStop(const json::Dict& request_map) const;
-    std::tuple<std::string_view, std::vector<const trans_cat::Stop*>, bool> SetBus(const json::Dict& request_map, trans_cat::TransportCatalogue& catalogue) const;
-    void SetStopDistances(trans_cat::TransportCatalogue& catalogue) const;
-
 public:
     JsonReader(std::istream& input)
-        : input_(json::Load(input)) {}
+        : input_(json::Load(input))
+    {}
 
     const json::Node& GetBaseRequests() const;
     const json::Node& GetStatRequests() const;
     const json::Node& GetRenderSettings() const;
+    const json::Node& GetRoutingSettings() const;
 
-    void SetCatalogue(trans_cat::TransportCatalogue& catalogue);
-    renderer::MapRenderer SetRenderSettings(const json::Dict& request_map) const;
+    void ProcessRequests(const json::Node& stat_requests, RequestHandler& rh) const;
 
+    void FillCatalogue(trans_cat::TransCatalogue& catalogue);
+    renderer::MapRenderer FillRenderSettings(const json::Node& settings) const;
+    trans_cat::TransRouter FillRoutingSettings(const json::Node& settings) const;
+
+    const json::Node PrintRoute(const json::Dict& request_map, RequestHandler& rh) const;
+    const json::Node PrintStop(const json::Dict& request_map, RequestHandler& rh) const;
+    const json::Node PrintMap(const json::Dict& request_map, RequestHandler& rh) const;
+    const json::Node PrintRouting(const json::Dict& request_map, RequestHandler& rh) const;
+
+private:
+    json::Document input_;
+    json::Node dummy_ = nullptr;
+
+    std::tuple<std::string_view, geo::Coordinates, std::map<std::string_view, int>> FillStop(const json::Dict& request_map) const;
+    void FillStopDistances(trans_cat::TransCatalogue& catalogue) const;
+    std::tuple<std::string_view, std::vector<const trans_cat::Stop*>, bool> FillRoute(const json::Dict& request_map, trans_cat::TransCatalogue& catalogue) const;
 };

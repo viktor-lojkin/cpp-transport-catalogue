@@ -8,32 +8,6 @@ std::ostream& operator<<(std::ostream& out, Color& color) {
     std::visit(ColorPrinter{ out }, color);
     return out;
 }
-    
-void ColorPrinter::operator()(std::monostate) const {
-    out_ << "none";
-}
-
-void ColorPrinter::operator()(std::string color) const {
-    out_ << color;
-}
-
-void ColorPrinter::operator()(Rgb color) const {
-    out_ << "rgb("
-        << static_cast<int>(color.red_) << ","
-        << static_cast<int>(color.green_) << ","
-        << static_cast<int>(color.blue_)
-        << ")";
-}
-
-void ColorPrinter::operator()(Rgba color) const {
-    out_ << "rgba("
-        << static_cast<int>(color.red_) << ","
-        << static_cast<int>(color.green_) << ","
-        << static_cast<int>(color.blue_) << ","
-        << color.opacity_
-        << ")";
-}
-    
 std::ostream& operator<<(std::ostream& out, StrokeLineCap line_cap) {
     switch (line_cap) {
     case StrokeLineCap::BUTT:
@@ -69,12 +43,17 @@ std::ostream& operator<<(std::ostream& out, StrokeLineJoin line_join) {
     }
     return out;
 }
-    
+
 void Object::Render(const RenderContext& context) const {
     context.RenderIndent();
+
+    // Делегируем вывод тега своим подклассам
     RenderObject(context);
-    context.out_ << std::endl;
+
+    context.out << std::endl;
 }
+
+// ---------- Circle ------------------
 
 Circle& Circle::SetCenter(Point center) {
     center_ = center;
@@ -87,14 +66,15 @@ Circle& Circle::SetRadius(double radius) {
 }
 
 void Circle::RenderObject(const RenderContext& context) const {
-    auto& out = context.out_;
-    out << "<circle "
-        << "cx=\""sv << center_.x_ << "\" "
-        << "cy=\""sv << center_.y_ << "\" "sv;
+    auto& out = context.out;
+    out << "<circle cx=\""sv << center_.x << "\" cy=\""sv << center_.y << "\" "sv;
     out << "r=\""sv << radius_ << "\""sv;
-    RenderAttrs(context.out_);
+    // Выводим атрибуты, унаследованные от PathProps
+    RenderAttrs(context.out);
     out << "/>"sv;
 }
+
+// ---------- Polyline ----------------
 
 Polyline& Polyline::AddPoint(Point point) {
     points_.push_back(std::move(point));
@@ -102,22 +82,25 @@ Polyline& Polyline::AddPoint(Point point) {
 }
 
 void Polyline::RenderObject(const RenderContext& context) const {
-    auto& out = context.out_;
+    auto& out = context.out;
     out << "<polyline points=\""sv;
     bool is_first = true;
     for (auto& point : points_) {
         if (is_first) {
-            out << point.x_ << "," << point.y_;
+            out << point.x << "," << point.y;
             is_first = false;
         }
         else {
-            out << " "sv << point.x_ << "," << point.y_;
+            out << " "sv << point.x << "," << point.y;
         }
     }
     out << "\"";
-    RenderAttrs(context.out_);
+    // Выводим атрибуты, унаследованные от PathProps
+    RenderAttrs(context.out);
     out << "/>"sv;
 }
+
+// ---------- Text --------------------
 
 Text& Text::SetPosition(Point pos) {
     pos_ = pos;
@@ -150,16 +133,19 @@ Text& Text::SetData(std::string data) {
 }
 
 void Text::RenderObject(const RenderContext& context) const {
-    auto& out = context.out_;
+    auto& out = context.out;
     out << "<text";
-    RenderAttrs(context.out_);
-    out << " x=\""sv << pos_.x_ << "\" y=\""sv << pos_.y_ << "\" "sv;
-    out << "dx=\""sv << offset_.x_ << "\" dy=\""sv << offset_.y_ << "\" "sv;
+    // Выводим атрибуты, унаследованные от PathProps
+    RenderAttrs(context.out);
+    out << " x=\""sv << pos_.x << "\" y=\""sv << pos_.y << "\" "sv;
+    out << "dx=\""sv << offset_.x << "\" dy=\""sv << offset_.y << "\" "sv;
     out << "font-size=\""sv << size_ << "\""sv;
     if (!font_family_.empty()) out << " font-family=\""sv << font_family_ << "\" "sv;
     if (!font_weight_.empty()) out << "font-weight=\""sv << font_weight_ << "\""sv;
     out << ">"sv << data_ << "</text>"sv;
 }
+
+// ---------- Document ----------------
 
 void Document::AddPtr(std::unique_ptr<Object>&& obj) {
     objects_.emplace_back(std::move(obj));
@@ -175,4 +161,4 @@ void Document::Render(std::ostream& out) const {
     out << "</svg>"sv;
 }
 
-}  // namespace svg
+} // namespace svg

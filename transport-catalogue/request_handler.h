@@ -1,30 +1,38 @@
 #pragma once
 
-#include <sstream>
-
 #include "json.h"
-#include "json_reader.h"
 #include "transport_catalogue.h"
 #include "map_renderer.h"
+#include "transport_router.h"
 
+#include <sstream>
+#include <optional>
 
 class RequestHandler {
-private:
-    const trans_cat::TransportCatalogue& catalogue_;
-    const renderer::MapRenderer& renderer_;
-
 public:
-    explicit RequestHandler(const trans_cat::TransportCatalogue& catalogue, const renderer::MapRenderer& renderer)
-        : catalogue_(catalogue), renderer_(renderer) {}
-
-    void ProcessRequests(const json::Node& stat_requests) const;
-
-    const json::Node PrintRoute(const json::Dict& request_map) const;
-    const json::Node PrintStop(const json::Dict& request_map) const;
-    const json::Node PrintMap(const json::Dict& request_map) const;
+    RequestHandler(const trans_cat::TransCatalogue& catalogue, const renderer::MapRenderer& renderer, const trans_cat::TransRouter& router)
+        : catalogue_(catalogue)
+        , renderer_(renderer)
+        , router_(router)
+    {
+    }
 
     std::optional<trans_cat::BusStat> GetBusStat(const std::string_view bus_number) const;
     const std::set<std::string> GetBusesByStop(std::string_view stop_name) const;
-
+    
+    bool IsBusNumber(const std::string_view bus_number) const;
+    bool IsStopName(const std::string_view stop_name) const;
+    
+    const std::optional<graph::Router<double>::RouteInfo> GetOptimalRoute(const std::string_view stop_from, const std::string_view stop_to) const;
+    const graph::DirectedWeightedGraph<double>& GetRouterGraph() const;
+    
     svg::Document RenderMap() const;
+
+private:
+    const trans_cat::TransCatalogue& catalogue_;
+    
+    const renderer::MapRenderer& renderer_;
+    
+    const trans_cat::TransRouter& router_;
+    
 };
