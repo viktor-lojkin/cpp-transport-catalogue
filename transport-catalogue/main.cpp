@@ -1,18 +1,62 @@
-#include "json_reader.h"
+#include "transport_catalogue.h"
 #include "request_handler.h"
+#include "json_reader.h"
+#include "json.h"
+#include "geo.h"
+#include "map_renderer.h"
+#include "transport_router.h"
+#include "serialization.h"
 
-int main() {
-    trans_cat::TransCatalogue catalogue;
-    JsonReader json_doc(std::cin);
+#include <transport_catalogue.pb.h>
 
-    json_doc.FillCatalogue(catalogue);
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <string_view>
+#include <utility>
 
-    const auto& stat_requests = json_doc.GetStatRequests();
-    const auto& render_settings = json_doc.GetRenderSettings();
-    const auto& renderer = json_doc.FillRenderSettings(render_settings);
-    const auto& routing_settings = json_doc.FillRoutingSettings(json_doc.GetRoutingSettings());
-    const trans_cat::TransRouter router = { routing_settings, catalogue };
+using namespace std::literals;
 
-    RequestHandler rh(catalogue, renderer, router);
-    json_doc.ProcessRequests(stat_requests, rh);
+void PrintUsage(std::ostream& stream = std::cerr) {
+    stream << "Usage: transport_catalogue [make_base|process_requests]\n"sv;
+}
+
+int main(int argc, char* argv[]) {
+    if (argc != 2) {
+        PrintUsage();
+        return 1;
+    }
+
+    const std::string_view mode(argv[1]);
+
+    if (mode == "make_base"sv) {
+        JsonReader input_json(json::Load(std::cin));
+        
+        transport::Catalogue tcat;
+        input_json.FillCatalogue(tcat);
+        
+        renderer::MapRenderer renderer(input_json.GetRenderSettings());
+        transport::Router router(input_json.GetRoutingSettings(), tcat);
+        
+        std::ofstream fout(input_json.GetSerializationSettings().AsDict().at("file"s).AsString(), std::ios::binary);
+        if (fout.is_open()) {
+            Serialize(tcat, renderer, router, fout);
+        }
+    }
+    else if (mode == "process_requests"sv) {
+        JsonReader input_json(json::Load(std::cin));
+        std::ifstream db_file(input_json.GetSerializationSettings().AsDict().at("file"s).AsString(), std::ios::binary);
+        if (db_file) {
+            
+            auto [tcat, renderer, router, graph, stop_ids] = Deserialize(db_file);
+            router.SetGraph(std::move(graph), std::move(stop_ids));
+            RequestHandler handler(tcat, router, renderer);
+            handler.JsonStatRequests(input_json.GetStatRequest(), std::cout);            
+     
+        }
+    }
+    else {
+        PrintUsage();
+        return 1;
+    }
 }

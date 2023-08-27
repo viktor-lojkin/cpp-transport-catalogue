@@ -1,38 +1,32 @@
 #pragma once
 
-#include "json.h"
 #include "transport_catalogue.h"
-#include "map_renderer.h"
 #include "transport_router.h"
+#include "domain.h"
+#include "json.h"
+#include "map_renderer.h"
+#include "json_builder.h"
 
-#include <sstream>
-#include <optional>
+#include <utility>
+#include <string>
+#include <string_view>
 
 class RequestHandler {
 public:
-    RequestHandler(const trans_cat::TransCatalogue& catalogue, const renderer::MapRenderer& renderer, const trans_cat::TransRouter& router)
-        : catalogue_(catalogue)
-        , renderer_(renderer)
-        , router_(router)
-    {
-    }
+    RequestHandler(const transport::Catalogue& catalogue,
+        const transport::Router& router, const renderer::MapRenderer& renderer);
 
-    std::optional<trans_cat::BusStat> GetBusStat(const std::string_view bus_number) const;
-    const std::set<std::string> GetBusesByStop(std::string_view stop_name) const;
-    
-    bool IsBusNumber(const std::string_view bus_number) const;
-    bool IsStopName(const std::string_view stop_name) const;
-    
-    const std::optional<graph::Router<double>::RouteInfo> GetOptimalRoute(const std::string_view stop_from, const std::string_view stop_to) const;
-    const graph::DirectedWeightedGraph<double>& GetRouterGraph() const;
-    
+    void JsonStatRequests(const json::Node& json_doc, std::ostream& output);
+
     svg::Document RenderMap() const;
 
 private:
-    const trans_cat::TransCatalogue& catalogue_;
-    
+    const transport::Catalogue& db_;
+    const transport::Router& router_;
     const renderer::MapRenderer& renderer_;
-    
-    const trans_cat::TransRouter& router_;
-    
+
+    json::Node FindStopRequestProcessing(const json::Dict& request_map);
+    json::Node FindBusRequestProcessing(const json::Dict& request_map);
+    json::Node BuildMapRequestProcessing(const json::Dict& request_map);
+    json::Node BuildRouteRequestProcessing(const json::Dict& request_map);
 };

@@ -3,34 +3,43 @@
 #include "geo.h"
 
 #include <string>
+#include <string_view>
 #include <vector>
-#include <set>
 #include <unordered_map>
 
-namespace trans_cat {
+namespace domain {
 
 struct Stop {
+    Stop(const std::string& name, const geo::Coordinates& coordinates)
+        : name(name)
+        , coordinates(coordinates) {
+    }
+    
+    int GetDistance(Stop* to) {
+        if (stop_distances.count(to->name))
+            return stop_distances.at(to->name);
+        else if (to->stop_distances.count(this->name))
+            return to->stop_distances.at(this->name);
+        else
+            return 0;
+    }
+
     std::string name;
     geo::Coordinates coordinates;
-    std::set<std::string> buses_by_stop;
+    std::unordered_map<std::string_view, int> stop_distances;
 };
 
 struct Bus {
-    std::string number;
-    std::vector<const Stop*> stops;
+    Bus(const std::string& name, std::vector<Stop*> stops, bool is_circle)
+        : name(name)
+        , stops(stops)
+        , is_circle(is_circle) {
+    }
+
+    std::string name;
+    std::vector<Stop*> stops;
     bool is_circle;
-};
+    Stop* final_stop = nullptr;
+};  
 
-struct BusStat {
-    size_t stops_count;
-    size_t unique_stops_count;
-    double route_length;
-    double curvature;
-};
-    
-struct StopnameIds{
-    std::unordered_map<std::string_view, int> stopname_ids;
-    size_t count = 0;
-};
-
-} // namespace transport
+} //namespace domain
