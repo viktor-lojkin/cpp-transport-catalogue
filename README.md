@@ -323,7 +323,7 @@ C++17, Protobuf, CMake
 ```
 <path_to_protobuf>\bin\proto --cpp_out . transport_catalogue.proto
 ```
-4. Собрать проект с помощью CMake:
+3. Собрать проект с помощью CMake:
 ```
 cmake . -DCMAKE_PREFIX_PATH=<path_to_protobuf>/package
 cmake --build .
